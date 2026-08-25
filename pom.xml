@@ -5,12 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- ================================================================= -->
-    <!-- ORDER PROCESSOR — deliberately vulnerable sample service.         -->
-    <!--                                                                   -->
-    <!-- WARNING: This project pins KNOWN-VULNERABLE dependency versions   -->
-    <!-- on purpose so the AWS Transform Security Agent has real findings  -->
-    <!-- to detect and remediate during the workshop. DO NOT deploy this   -->
-    <!-- to any real environment.                                          -->
+    <!-- ORDER PROCESSOR — sample service.                                 -->
     <!-- ================================================================= -->
 
     <groupId>com.example.workshop</groupId>
@@ -19,13 +14,13 @@
     <packaging>jar</packaging>
 
     <name>order-processor</name>
-    <description>Deliberately vulnerable Spring Boot service for the ATX Continuous Modernization workshop</description>
+    <description>Spring Boot service for the ATX Continuous Modernization workshop</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- EOL / vulnerable Spring Boot line (Spring4Shell era). -->
-        <version>2.5.6</version>
+        <!-- Upgraded from EOL 2.5.6 to latest patched 2.7.x (Java 11 compatible). -->
+        <version>2.7.18</version>
         <relativePath/>
     </parent>
 
@@ -34,6 +29,11 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Override BOM-managed versions to ensure patched releases. -->
+        <log4j2.version>2.21.1</log4j2.version>
+        <snakeyaml.version>2.2</snakeyaml.version>
+        <!-- jackson-databind: let the Boot 2.7.18 BOM manage it (2.15.x). -->
     </properties>
 
     <dependencies>
@@ -42,38 +42,35 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- CVE-2021-44228 "Log4Shell" + CVE-2021-45046 — RCE via JNDI lookup. -->
+        <!-- Log4j — version managed by ${log4j2.version} property override (2.21.1).
+             Fixes CVE-2021-44228, CVE-2021-45046, CVE-2021-45105. -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <version>2.14.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
-            <version>2.14.1</version>
         </dependency>
 
-        <!-- CVE-2022-42889 "Text4Shell" — RCE via StringSubstitutor interpolation. -->
+        <!-- Commons Text — upgraded from 1.9 to 1.11.0.
+             Fixes CVE-2022-42889 (Text4Shell). -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
-            <version>1.9</version>
+            <version>1.11.0</version>
         </dependency>
 
-        <!-- CVE-2022-1471 — SnakeYAML deserialization RCE. -->
+        <!-- SnakeYAML — version managed by ${snakeyaml.version} property override (2.2).
+             Fixes CVE-2022-1471. -->
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.30</version>
         </dependency>
 
-        <!-- Multiple CVEs — outdated jackson-databind deserialization issues. -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.9.10.1</version>
-        </dependency>
+        <!-- jackson-databind: removed explicit 2.9.10.1 pin.
+             Now managed by Boot BOM (2.15.x in 2.7.18), which resolves
+             all polymorphic-deserialization CVEs in the 2.9.x line. -->
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -87,6 +84,59 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Enforcer plugin: fail the build if banned (known-vulnerable) dependency versions sneak in. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <id>ban-vulnerable-deps</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <!-- Block any log4j-core < 2.17.1 (Log4Shell family) -->
+                                        <exclude>org.apache.logging.log4j:log4j-core:[0,2.17.1)</exclude>
+                                        <!-- Block commons-text < 1.10.0 (Text4Shell) -->
+                                        <exclude>org.apache.commons:commons-text:[0,1.10.0)</exclude>
+                                        <!-- Block snakeyaml < 2.0 (CVE-2022-1471) -->
+                                        <exclude>org.yaml:snakeyaml:[0,2.0)</exclude>
+                                        <!-- Block jackson-databind < 2.14.0 (polymorphic deser CVEs) -->
+                                        <exclude>com.fasterxml.jackson.core:jackson-databind:[0,2.14.0)</exclude>
+                                    </excludes>
+                                </bannedDependencies>
+                                <requireMavenVersion>
+                                    <version>[3.6.0,)</version>
+                                </requireMavenVersion>
+                            </rules>
+                            <fail>true</fail>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- OWASP Dependency-Check: scans transitive dependencies against NVD. -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>9.0.7</version>
+                <configuration>
+                    <!-- Fail the build on HIGH or CRITICAL CVEs (CVSS >= 7). -->
+                    <failBuildOnCVSS>7</failBuildOnCVSS>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
