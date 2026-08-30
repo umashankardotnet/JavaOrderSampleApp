@@ -1,19 +1,17 @@
 package com.example.workshop.order;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import com.sun.net.httpserver.HttpServer;
 
-/**
- * Entry point for the deliberately vulnerable Order Processor sample service.
- *
- * <p>This service exists only as a remediation target for the ATX Continuous
- * Modernization workshop. It intentionally uses outdated, CVE-affected
- * dependencies and at least one risky code path. Do not deploy it anywhere.
- */
-@SpringBootApplication
+import java.io.IOException;
+import java.net.InetSocketAddress;
+
 public class OrderProcessorApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(OrderProcessorApplication.class, args);
+    public static void main(String[] args) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        server.createContext("/orders/note", new OrderController());
+        server.setExecutor(null);
+        server.start();
+        System.out.println("Order Processor listening on http://localhost:8080/orders/note?value=...");
     }
 }

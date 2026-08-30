@@ -3,46 +3,23 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <!-- ================================================================= -->
-    <!-- ORDER PROCESSOR — deliberately vulnerable sample service.         -->
-    <!--                                                                   -->
-    <!-- WARNING: This project pins KNOWN-VULNERABLE dependency versions   -->
-    <!-- on purpose so the AWS Transform Security Agent has real findings  -->
-    <!-- to detect and remediate during the workshop. DO NOT deploy this   -->
-    <!-- to any real environment.                                          -->
-    <!-- ================================================================= -->
-
     <groupId>com.example.workshop</groupId>
     <artifactId>order-processor</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>order-processor</name>
-    <description>Deliberately vulnerable Spring Boot service for the ATX Continuous Modernization workshop</description>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- EOL / vulnerable Spring Boot line (Spring4Shell era). -->
-        <version>2.5.6</version>
-        <relativePath/>
-    </parent>
+    <description>Deliberately vulnerable sample service (single Log4Shell CVE) for the AWS Transform Continuous Modernization workshop</description>
 
     <properties>
-        <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- CVE-2021-44228 "Log4Shell" + CVE-2021-45046 — RCE via JNDI lookup. -->
+        <!-- CVE-2021-44228 "Log4Shell" (+ CVE-2021-45046) — RCE via JNDI lookup.
+             The single planted vulnerability for this workshop. -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
@@ -54,30 +31,10 @@
             <version>2.14.1</version>
         </dependency>
 
-        <!-- CVE-2022-42889 "Text4Shell" — RCE via StringSubstitutor interpolation. -->
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-text</artifactId>
-            <version>1.9</version>
-        </dependency>
-
-        <!-- CVE-2022-1471 — SnakeYAML deserialization RCE. -->
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>1.30</version>
-        </dependency>
-
-        <!-- Multiple CVEs — outdated jackson-databind deserialization issues. -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.9.10.1</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -85,8 +42,14 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>
