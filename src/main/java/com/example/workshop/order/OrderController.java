@@ -2,8 +2,8 @@ package com.example.workshop.order;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -12,11 +12,11 @@ import java.nio.charset.StandardCharsets;
 
 public class OrderController implements HttpHandler {
 
-    private static final Logger LOGGER = LogManager.getLogger(OrderController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OrderController.class);
 
     /** Core logic, extracted so it can be unit-tested without a live server. */
     public String note(String value) {
-        LOGGER.info("Received order note: " + value);
+        LOGGER.info("Received order note: {}", value);
         return "logged";
     }
 
